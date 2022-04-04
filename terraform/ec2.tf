@@ -1,14 +1,23 @@
 provider "aws" {
-    region = "us-east-2"
+    
+  access_key = var.AWS_ACCESS_KEY_ID
+  secret_key = var.AWS_SECRET_ACCESS_KEY
+  region     = var.AWS_DEFAULT_REGION
 }
 
 resource "aws_instance" "Jenkins" {
 	ami = "ami-0f597975071f4c4ec"
 	instance_type = "t2.micro"
     key_name = "Jenkins"
-
-    security_groups = [ "launch-wizard-2" ]
-
+#    vpc_zone_identifier = ["$aws_subnet.subnet1.id"]
+#    vpc_id      = ["${aws_vpc.main1.id}"]
+#    security_groups = ["${aws_security_group.sg1.name}"]
+#    vpc_security_group_ids = ["aws_security_group.sg-1", "aws_security_group.sg-2"]
+#    security_groups = [
+#        "aws_security_group.sg1.id",
+#        "aws_security_group.sg2.id"
+#    ]
+#    subnet_id = aws_subnet.subnet1.id
     user_data = <<-EOF
     #!/bin/bash
     sudo apt-get update
@@ -71,4 +80,56 @@ resource "aws_instance" "Jenkins" {
 
     sudo service jenkins start
     EOF
+    tags = {
+        Name = "Jenkins"
+    }
 }  
+
+#resource "aws_key_pair" "deployer" {
+#  key_name   = "ndf-key"
+#  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDVTxjqXeBGgP2FcjuAX3DLp/xiBuUjEexrugTPFkbTCuB0dcmSzjF5TL5K/E8fzqDp7j4pG1FTymV0jFJOLaHLhbml38I0QHT2bgNgWTmwQfNs9/MNhZsODc5Jo2q76L1XSMhFyka06tcO3+LYvWpddZsGHni9DVYs30l+PmG74Jbf5tXXThWkNTN0c0OPpts5BPI6NuufEISeWn6xNlXsVXuGdoiABurc1B65f/5HNtHwrplBVpB9k0cvEWq+oDkCJYNdIu5hMQr0lqNxl2xItx0nU4FMuMlXZCABniAbUoO2g73FelMqYrvccN99aqEeBGF70pPllqnHNBpJztkqTBQ4/GHkfIOIA7FKAcQZAwEJ6QD0MPpNQwJk4YEvci5j3jQvFkfZLcz0GeTkw8vsKnoGV7pn63Scc3xoJJYlR3U7bKG8JAy5VarB6MEdfm67CfAKxYMzCQJHD/L+Vya3dneLdDgdt1kWsRAKUoK+lUSfWTmZFBP5VXYf8npyIaE= ndf@DESKTOP-GA9KPA4"
+#  tags = {
+#    Name = "ndf_key"
+#  }
+#}
+
+
+resource "aws_vpc" "main1" {
+    cidr_block = "10.0.0.0/16"
+    enable_dns_hostnames = true
+    enable_dns_support = true
+    tags = {
+        Name = "Main VPC 1"
+    }
+}
+
+resource "aws_subnet" "subnet1" {
+    vpc_id = "${aws_vpc.main1.id}"
+    cidr_block = "10.0.10.0/24"
+    map_public_ip_on_launch = true
+    availability_zone = "us-east-2a"
+    tags = {
+        Name = "Subnet 1 - us-east-2a"
+    }
+}
+
+resource "aws_internet_gateway" "gw" {
+    vpc_id = "${aws_vpc.main1.id}"
+    tags = {
+        Name = "Gateway Main"
+    }
+}
+
+resource "aws_route_table" "r" {
+    vpc_id = "${aws_vpc.main1.id}"
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = "${aws_internet_gateway.gw.id}"
+    }
+}
+
+resource "aws_route_table_association" "table_subnet1" {
+    subnet_id = aws_subnet.subnet1.id
+    route_table_id = aws_route_table.r.id
+
+}

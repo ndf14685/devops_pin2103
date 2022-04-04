@@ -1,2 +1,6 @@
 *.exe
 *.backup
+credentials.tfvars
+*.tfstate
+*.pem
+*.pem.pub

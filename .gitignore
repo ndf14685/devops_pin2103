@@ -4,3 +4,4 @@ credentials.tfvars
 *.tfstate
 *.pem
 *.pem.pub
+variables.tf
